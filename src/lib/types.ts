@@ -135,3 +135,42 @@ export interface ActivityLog {
   details: Record<string, unknown>
   created_at: string
 }
+
+// ---------- Tableau « Idées produits » (Amazon FBA) ----------
+export type ProductVerdict = 'bon' | 'moyen' | 'a_eviter'
+
+export interface ProductColumn {
+  id: string
+  company_id: string
+  name: string
+  position: number
+  is_store: boolean
+  is_protected: boolean
+  created_at: string
+}
+
+export interface ProductCard {
+  id: string
+  company_id: string
+  column_id: string
+  title: string
+  image_url: string | null
+  ean: string | null
+  asin: string | null
+  amazon_url: string | null
+  supplier_url: string | null
+  buy_price: number | null
+  sell_price: number | null
+  amazon_fees: number | null
+  profit: number | null
+  roi: number | null
+  monthly_sales: number | null
+  bsr: number | null
+  notes: string | null
+  received_at: string | null
+  verdict: ProductVerdict | null
+  in_cart: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
