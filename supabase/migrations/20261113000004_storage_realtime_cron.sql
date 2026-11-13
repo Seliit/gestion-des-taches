@@ -116,3 +116,13 @@ begin
 exception when others then
   raise notice 'pg_cron indisponible (%), activez-le dans Supabase > Database > Extensions puis relancez cette migration', sqlerrm;
 end $$;
+
+-- ---------- Durcissement final des droits d'exécution ----------
+-- Supabase accorde par défaut EXECUTE à anon/authenticated sur toute nouvelle fonction.
+-- Aucune fonction n'est appelable sans être connecté ; les fonctions internes ne le sont jamais via l'API.
+revoke execute on all functions in schema public from anon, public;
+alter default privileges in schema public revoke execute on functions from anon, public;
+revoke execute on function public.log_activity(uuid, uuid, uuid, text, text, uuid, jsonb) from authenticated;
+revoke execute on function public.notify(uuid, public.notification_type, text, text, uuid, uuid, text) from authenticated;
+revoke execute on function public.grant_super_admin(text) from authenticated;
+revoke execute on function public.run_scheduled_jobs() from authenticated;

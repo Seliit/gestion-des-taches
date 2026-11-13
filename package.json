@@ -1,5 +1,5 @@
 {
-  "name": "gestion-taches",
+  "name": "gestion-des-taches",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test:db": "bash scripts/test-db.sh",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "db:backup": "bash scripts/backup.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -42,6 +46,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.90.0",
+    "supabase": "^3.1.0",
     "tailwindcss": "^4.3.5",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"

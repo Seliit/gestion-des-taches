@@ -1,122 +1,71 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { Spinner } from '@/components/ui/misc'
+import { useAuth } from '@/context/auth'
+import { isConfigured } from '@/lib/supabase'
+import Dashboard from '@/pages/Dashboard'
+import CompanyPage from '@/pages/CompanyPage'
+import TaskDetail from '@/pages/TaskDetail'
+import Projects, { ProjectDetail } from '@/pages/Projects'
+import Collaborators, { CollaboratorDetail } from '@/pages/Collaborators'
+import Teams from '@/pages/Teams'
+import Reports from '@/pages/Reports'
+import ActivityPage from '@/pages/ActivityPage'
+import { AllTasks, CalendarPage, InvitationsPage, MyTasks, NotificationsPage, TeamView, Today } from '@/pages/TaskPages'
+import { CompaniesSettings, NotificationSettings, ProfileSettings, RolesSettings, SecuritySettings } from '@/pages/settings/Settings'
+import { Login, NotConfigured, SetPassword, Setup } from '@/pages/Auth'
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function Protected() {
+  const { session, loading, profile } = useAuth()
+  const location = useLocation()
+  if (loading)
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-6" />
+      </div>
+    )
+  if (!session) return <Navigate to="/connexion" replace state={{ from: location }} />
+  if (profile && !profile.is_active)
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+        Votre compte a été désactivé. Contactez votre administrateur.
+      </div>
+    )
+  return <AppLayout />
 }
 
-export default App
+export default function App() {
+  if (!isConfigured) return <NotConfigured />
+  return (
+    <Routes>
+      <Route path="/connexion" element={<Login />} />
+      <Route path="/definir-mot-de-passe" element={<SetPassword />} />
+      <Route element={<Protected />}>
+        <Route index element={<Dashboard />} />
+        <Route path="configuration" element={<Setup />} />
+        <Route path="aujourdhui" element={<Today />} />
+        <Route path="taches" element={<AllTasks />} />
+        <Route path="taches/:id" element={<TaskDetail />} />
+        <Route path="mes-taches" element={<MyTasks />} />
+        <Route path="equipe" element={<TeamView />} />
+        <Route path="calendrier" element={<CalendarPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="invitations" element={<InvitationsPage />} />
+        <Route path="societes/:id" element={<CompanyPage />} />
+        <Route path="projets" element={<Projects />} />
+        <Route path="projets/:id" element={<ProjectDetail />} />
+        <Route path="collaborateurs" element={<Collaborators />} />
+        <Route path="collaborateurs/:id" element={<CollaboratorDetail />} />
+        <Route path="equipes" element={<Teams />} />
+        <Route path="rapports" element={<Reports />} />
+        <Route path="historique" element={<ActivityPage />} />
+        <Route path="parametres/profil" element={<ProfileSettings />} />
+        <Route path="parametres/societes" element={<CompaniesSettings />} />
+        <Route path="parametres/roles" element={<RolesSettings />} />
+        <Route path="parametres/notifications" element={<NotificationSettings />} />
+        <Route path="parametres/securite" element={<SecuritySettings />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  )
+}
