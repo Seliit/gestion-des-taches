@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Bell, Building2, CalendarDays, CheckSquare, ClipboardList, FolderKanban, History, LayoutDashboard, LogOut, Menu, Monitor, Moon,
-  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck,
+  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck, ListTodo,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/misc'
 import { Button } from '@/components/ui/button'
@@ -62,6 +62,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex flex-col px-2 pb-6">
       <Section title={isSuperAdmin ? 'Espace global' : 'Mon espace'}>
         <NavItem to="/" end icon={LayoutDashboard} label="Vue d’ensemble" {...p} />
+        <NavItem to="/ma-liste" icon={ListTodo} label="Ma liste" {...p} />
         <NavItem to="/aujourdhui" icon={Sunrise} label="Aujourd’hui" {...p} />
         <NavItem to="/mes-taches" icon={CheckSquare} label="Mes tâches" {...p} />
         <NavItem to="/taches" icon={ClipboardList} label={isSuperAdmin ? 'Toutes les tâches' : 'Tâches'} {...p} />

@@ -6,8 +6,9 @@ import {
   startOfMonth, startOfWeek, subDays, subMonths, subWeeks,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ListChecks, Plus } from 'lucide-react'
-import { Avatar, EmptyState } from '@/components/ui/misc'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ListChecks, Plus, Send, X } from 'lucide-react'
+import { Avatar, Checkbox, EmptyState } from '@/components/ui/misc'
+import { SendListDialog } from './SendListDialog'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/input'
 import { CompanyDot, DueBadge, PriorityBadge, PrivateIcon, StatusIcon } from './badges'
@@ -180,6 +181,19 @@ export function ListView({ tasks }: { tasks: Task[] }) {
   const companies = useCompanies()
   const projects = useProjects()
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: 'due_date', asc: true })
+  // Sélection pour « Envoyer à… » (uniquement les tâches que l'on gère).
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sending, setSending] = useState(false)
+  const selectable = tasks.filter(canManage)
+  const selectedTasks = tasks.filter((t) => selected.has(t.id))
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  const allChecked = selectable.length > 0 && selectable.every((t) => selected.has(t.id))
 
   const sorted = useMemo(() => {
     const arr = [...tasks]
@@ -209,10 +223,31 @@ export function ListView({ tasks }: { tasks: Task[] }) {
   if (!tasks.length) return <EmptyState icon={<ListChecks />} title="Aucune tâche" description="Aucune tâche ne correspond à ces critères." />
 
   return (
+    <div className="grid gap-3">
+    {selectedTasks.length > 0 && (
+      <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-primary/5 px-3 py-2 text-sm shadow-sm backdrop-blur">
+        <span className="font-medium">{selectedTasks.length} sélectionnée{selectedTasks.length > 1 ? 's' : ''}</span>
+        <Button size="sm" onClick={() => setSending(true)}>
+          <Send className="size-4" /> Envoyer à…
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+          <X className="size-4" /> Annuler
+        </Button>
+      </div>
+    )}
     <div className="overflow-x-auto rounded-xl border bg-card">
       <table className="w-full min-w-[820px] text-sm">
         <thead className="border-b text-xs text-muted-foreground">
           <tr>
+            <th className="w-10 px-3 py-2">
+              {selectable.length > 0 && (
+                <Checkbox
+                  aria-label="Tout sélectionner"
+                  checked={allChecked}
+                  onCheckedChange={(v) => setSelected(v ? new Set(selectable.map((t) => t.id)) : new Set())}
+                />
+              )}
+            </th>
             <Th k="title">Tâche</Th>
             <Th k="status" className="w-36">Statut</Th>
             <Th k="priority" className="w-32">Priorité</Th>
@@ -226,7 +261,12 @@ export function ListView({ tasks }: { tasks: Task[] }) {
             const project = projects.data?.find((p) => p.id === t.project_id)
             const assignee = map.get(t.assignee_id ?? '')
             return (
-              <tr key={t.id} className="border-b last:border-0 hover:bg-muted/40">
+              <tr key={t.id} className={cn('border-b last:border-0 hover:bg-muted/40', selected.has(t.id) && 'bg-primary/5')}>
+                <td className="w-10 px-3 py-2">
+                  {canManage(t) && (
+                    <Checkbox aria-label="Sélectionner" checked={selected.has(t.id)} onCheckedChange={() => toggle(t.id)} />
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   <Link to={`/taches/${t.id}`} className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1.5 font-medium hover:underline">
@@ -282,6 +322,8 @@ export function ListView({ tasks }: { tasks: Task[] }) {
         </tbody>
       </table>
       {dialog}
+    </div>
+    <SendListDialog open={sending} onOpenChange={setSending} tasks={selectedTasks} onSent={() => setSelected(new Set())} />
     </div>
   )
 }
