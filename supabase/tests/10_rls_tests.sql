@@ -86,6 +86,8 @@ insert into tasks (id, company_id, project_id, title, assignee_id, is_private, c
 :as_anon
 select t.throws('select * from public.tasks', 'anonyme : aucun accès aux tâches');
 select t.throws('select * from public.companies', 'anonyme : aucun accès aux sociétés');
+select t.throws('select public.accept_my_invitations()', 'anonyme : aucune fonction appelable');
+select t.throws('select public.set_user_active(''00000000-0000-0000-0000-0000000000e1'', false)', 'anonyme : ne désactive personne');
 
 -- ===================== 2. Super-administrateur =====================
 :as_super
