@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Bell, Building2, CalendarDays, CheckSquare, ClipboardList, FolderKanban, History, LayoutDashboard, LogOut, Menu, Monitor, Moon,
-  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck, ListTodo,
+  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck, ListTodo, TrendingUp,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/misc'
 import { Button } from '@/components/ui/button'
@@ -92,6 +92,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </Section>
 
       <Section title="Gestion">
+        <NavItem to="/produits" icon={TrendingUp} label="Idées produits" {...p} />
         <NavItem to="/projets" icon={FolderKanban} label="Projets" {...p} />
         <NavItem to="/collaborateurs" icon={Users} label="Collaborateurs" {...p} />
         <NavItem to="/equipes" icon={UsersRound} label="Équipes" {...p} />
@@ -134,6 +135,12 @@ function useRealtime() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         qc.invalidateQueries({ queryKey: ['tasks'] })
         qc.invalidateQueries({ queryKey: ['task'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_cards' }, () => {
+        qc.invalidateQueries({ queryKey: ['product_cards'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_columns' }, () => {
+        qc.invalidateQueries({ queryKey: ['product_columns'] })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_comments' }, () => {
         qc.invalidateQueries({ queryKey: ['task_comments'] })

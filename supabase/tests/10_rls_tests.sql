@@ -283,6 +283,30 @@ select t.ok(not exists (select 1 from tasks where id = 'a0000000-0000-0000-0000-
 :as_super
 select t.ok(exists (select 1 from activity_logs where action = 'task.deleted' and task_id = 'a0000000-0000-0000-0000-000000000005'), 'suppression conservée dans le journal');
 
+-- ===================== 14. Tableau « Idées produits » =====================
+:as_admin2
+insert into product_columns (id, company_id, name, position) values
+ ('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', 'Sourcing', 1);
+insert into product_cards (id, company_id, column_id, title, profit) values
+ ('e0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'Produit S2', 4.5);
+select t.ok((select count(*) from product_cards) = 1, 'admin S2 voit ses cartes produit');
+:as_emp3
+update product_cards set in_cart = true where id = 'e0000000-0000-0000-0000-000000000002';
+select t.ok((select in_cart from product_cards where id = 'e0000000-0000-0000-0000-000000000002'), 'membre S2 coche un produit dans la liste de courses');
+:as_admin1
+select t.ok((select count(*) from product_cards) = 0, 'admin S1 ne voit pas les cartes produit de S2');
+select t.ok(t.rows('update product_cards set title = ''piraté''') = 0, 'admin S1 ne peut pas modifier les cartes de S2');
+select t.ok(t.rows('delete from product_columns') = 0, 'admin S1 ne peut pas supprimer les colonnes de S2');
+select t.throws($q$insert into product_cards (company_id, column_id, title) values ('c0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'x')$q$, 'admin S1 ne peut pas créer de carte dans S2');
+insert into product_columns (id, company_id, name) values ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'Auchan');
+select t.throws($q$insert into product_cards (company_id, column_id, title) values ('c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'x')$q$, 'carte S1 rangée dans une colonne de S2 refusée');
+insert into product_cards (company_id, column_id, title) values ('c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Produit S1');
+select t.throws($q$update product_cards set company_id = 'c0000000-0000-0000-0000-000000000002', column_id = 'd0000000-0000-0000-0000-000000000002'$q$, 'déplacement de carte vers une autre société refusé');
+:as_anon
+select t.throws('select * from product_cards', 'anonyme : aucun accès aux cartes produit');
+:as_super
+select t.ok((select count(*) from product_cards) = 2, 'super-admin voit les cartes produit de toutes les sociétés');
+
 \o
 reset role;
 \echo 'Tous les tests de sécurité sont passés.'

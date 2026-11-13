@@ -12,6 +12,8 @@ import Teams from '@/pages/Teams'
 import Reports from '@/pages/Reports'
 import ActivityPage from '@/pages/ActivityPage'
 import MyList from '@/pages/MyList'
+import ProductBoard from '@/pages/products/ProductBoard'
+import ShoppingList from '@/pages/products/ShoppingList'
 import { AllTasks, CalendarPage, InvitationsPage, MyTasks, NotificationsPage, TeamView, Today } from '@/pages/TaskPages'
 import { CompaniesSettings, NotificationSettings, ProfileSettings, RolesSettings, SecuritySettings } from '@/pages/settings/Settings'
 import { Login, NotConfigured, SetPassword, Setup } from '@/pages/Auth'
@@ -44,6 +46,8 @@ export default function App() {
       <Route element={<Protected />}>
         <Route index element={<Home />} />
         <Route path="ma-liste" element={<MyList />} />
+        <Route path="produits" element={<ProductBoard />} />
+        <Route path="produits/courses" element={<ShoppingList />} />
         <Route path="configuration" element={<Setup />} />
         <Route path="aujourdhui" element={<Today />} />
         <Route path="taches" element={<AllTasks />} />
