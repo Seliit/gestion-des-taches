@@ -42,7 +42,16 @@ export function useEnsureDefaultColumns(companyId: string | null | undefined, co
     done.current = companyId
     supabase
       .from('product_columns')
-      .insert(DEFAULT_PRODUCT_COLUMNS.map((c, i) => ({ company_id: companyId, position: (i + 1) * 1000, ...c })))
+      .insert(
+        // Toutes les lignes avec les mêmes champs : sinon un champ absent est envoyé à null.
+        DEFAULT_PRODUCT_COLUMNS.map((c, i) => ({
+          company_id: companyId,
+          name: c.name,
+          position: (i + 1) * 1000,
+          is_store: !!c.is_store,
+          is_protected: !!c.is_protected,
+        })),
+      )
       .then(({ error }) => {
         if (error) toast.error(errorMessage(error))
         qc.invalidateQueries({ queryKey: ['product_columns', companyId] })
