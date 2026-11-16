@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, Plus } from 'lucide-react'
+import { StockAPerte } from '@/components/dashboard/StockAPerte'
 import { PageHeader } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { EmptyState, Skeleton } from '@/components/ui/misc'
@@ -45,6 +46,7 @@ export default function Dashboard() {
         title={`${hello} ${profile?.first_name || fullName(profile)}`}
         description={isSuperAdmin ? 'Vue d’ensemble de vos sociétés' : 'Vue d’ensemble de votre activité'}
       />
+      <StockAPerte />
       <TaskFilters value={filters} onChange={setFilters} hide={['q', 'status', 'priority']} />
       <KpiGrid tasks={filtered} />
       {shownCompanies.length > 1 && (

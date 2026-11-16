@@ -139,6 +139,9 @@ function useRealtime() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_cards' }, () => {
         qc.invalidateQueries({ queryKey: ['product_cards'] })
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'loss_stock_items' }, () => {
+        qc.invalidateQueries({ queryKey: ['loss_stock_items'] })
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_columns' }, () => {
         qc.invalidateQueries({ queryKey: ['product_columns'] })
       })
