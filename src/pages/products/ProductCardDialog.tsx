@@ -80,10 +80,14 @@ export function ProductCardDialog({
     }))
     if (!parsed.asin && !parsed.ean) return
     setSearching(true)
-    const r = await lookupProduct({ asin: parsed.asin, ean: parsed.ean })
+    const { result: r, error, notConfigured } = await lookupProduct({ asin: parsed.asin, ean: parsed.ean })
     setSearching(false)
-    if (!r) {
+    if (notConfigured) {
       toast.info('API Amazon non branchée : complétez la fiche à la main.')
+      return
+    }
+    if (!r) {
+      toast.error(`${error ?? 'Produit introuvable'} : complétez la fiche à la main.`)
       return
     }
     setF((s) => ({

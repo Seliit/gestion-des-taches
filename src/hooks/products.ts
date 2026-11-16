@@ -105,14 +105,28 @@ export type LookupResult = Partial<
 
 /**
  * Recherche Amazon en lecture seule via la fonction serveur « product-lookup »
- * (clé API côté serveur uniquement). Renvoie null si l'API n'est pas branchée.
+ * (clés API côté serveur uniquement). `notConfigured` : aucune API branchée.
  */
-export async function lookupProduct(q: { asin?: string; ean?: string }): Promise<LookupResult | null> {
+export async function lookupProduct(q: { asin?: string; ean?: string }): Promise<{ result?: LookupResult; error?: string; notConfigured?: boolean }> {
   try {
     const { data, error } = await supabase.functions.invoke('product-lookup', { body: q })
-    if (error || !data || (data as { error?: string }).error) return null
-    return data as LookupResult
+    const msg = (data as { error?: string } | null)?.error
+    if (msg === 'not_configured') return { notConfigured: true }
+    if (error) {
+      // Fonction pas encore déployée, ou erreur renvoyée par la fonction.
+      const ctx = (error as { context?: Response }).context
+      let detail: string | undefined
+      try {
+        detail = ctx ? ((await ctx.json()) as { error?: string }).error : undefined
+      } catch {
+        /* réponse illisible */
+      }
+      if (!detail && /not found|404/i.test(String(error.message))) return { notConfigured: true }
+      return { error: detail ?? 'Recherche Amazon indisponible' }
+    }
+    if (msg) return { error: msg }
+    return { result: data as LookupResult }
   } catch {
-    return null
+    return { notConfigured: true }
   }
 }
