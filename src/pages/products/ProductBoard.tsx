@@ -5,7 +5,7 @@ import {
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import {
-  ArrowLeft, ArrowRight, BarChart3, ImageOff, MoreHorizontal, PackageCheck, Pencil, Plus, Search, ShieldCheck,
+  AlignLeft, ArrowLeft, ArrowRight, BarChart3, Images, MoreHorizontal, PackageCheck, Pencil, Plus, Search, ShieldCheck,
   ShoppingCart, Store, Trash2, TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { Input, NativeSelect } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/misc'
 import { useCompanies } from '@/hooks/data'
 import {
-  useEnsureDefaultColumns, useProductCards, useProductColumns, useProductMutation, useUpdateProductCard,
+  PHOTO_BUCKET, useEnsureDefaultColumns, usePhotoUrls, useProductCards, useProductColumns, useProductMutation, useUpdateProductCard,
 } from '@/hooks/products'
 import { byProfitability, effectiveProfit, effectiveRoi, intFr, money, VERDICTS } from '@/lib/products'
 import { supabase } from '@/lib/supabase'
@@ -96,6 +96,9 @@ export default function ProductBoard() {
   }
 
   const total = cards.data?.length ?? 0
+  // Une seule demande de liens pour toutes les photos de couverture.
+  const coverPaths = useMemo(() => (cards.data ?? []).flatMap((c) => (c.photos?.[0] ? [c.photos[0]] : [])), [cards.data])
+  const covers = usePhotoUrls(coverPaths).data ?? {}
 
   return (
     <div className="theme-produits dark -mx-4 -my-5 flex h-[calc(100dvh-3.5rem)] flex-col bg-background text-foreground sm:-mx-6">
@@ -106,7 +109,7 @@ export default function ProductBoard() {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold leading-tight">Idées produits</h1>
-            <p className="text-xs text-muted-foreground">{total} produit{total > 1 ? 's' : ''} · Amazon en lecture seule</p>
+            <p className="text-xs text-muted-foreground">{total} carte{total > 1 ? 's' : ''}</p>
           </div>
         </div>
         {companies.length > 1 && (
@@ -124,7 +127,7 @@ export default function ProductBoard() {
           </Link>
         </Button>
         <Button onClick={() => cols[0] && setEditing({ card: null, columnId: cols[0].id })} disabled={!cols.length}>
-          <Plus className="size-4" /> <span className="hidden sm:inline">Produit</span>
+          <Plus className="size-4" /> <span className="hidden sm:inline">Carte</span>
         </Button>
       </div>
 
@@ -140,6 +143,7 @@ export default function ProductBoard() {
                 key={col.id}
                 column={col}
                 cards={byColumn.get(col.id) ?? []}
+                covers={covers}
                 prev={cols[i - 1]}
                 next={cols[i + 1]}
                 onOpen={(card) => setEditing({ card, columnId: col.id })}
@@ -148,7 +152,7 @@ export default function ProductBoard() {
             ))}
             <AddColumn companyId={companyId} position={(cols.at(-1)?.position ?? 0) + 1000} />
           </div>
-          <DragOverlay>{dragging && <CardFace card={dragging} overlay />}</DragOverlay>
+          <DragOverlay>{dragging && <CardFace card={dragging} cover={coverOf(covers, dragging)} overlay />}</DragOverlay>
         </DndContext>
       )}
 
@@ -167,10 +171,11 @@ export default function ProductBoard() {
 }
 
 function Column({
-  column, cards, prev, next, onOpen, onAdd,
+  column, cards, covers, prev, next, onOpen, onAdd,
 }: {
   column: ProductColumn
   cards: ProductCard[]
+  covers: Record<string, string>
   prev?: ProductColumn
   next?: ProductColumn
   onOpen: (c: ProductCard) => void
@@ -181,7 +186,13 @@ function Column({
   const [name, setName] = useState(column.name)
   const [deleting, setDeleting] = useState(false)
   const patch = useProductMutation((p: Partial<ProductColumn>) => supabase.from('product_columns').update(p).eq('id', column.id))
-  const remove = useProductMutation(() => supabase.from('product_columns').delete().eq('id', column.id), 'Colonne supprimée')
+  const remove = useProductMutation(async () => {
+    const res = await supabase.from('product_columns').delete().eq('id', column.id)
+    // Les cartes partent avec la colonne : on efface aussi leurs photos.
+    const paths = cards.flatMap((c) => c.photos ?? [])
+    if (!res.error && paths.length) await supabase.storage.from(PHOTO_BUCKET).remove(paths)
+    return res
+  }, 'Colonne supprimée')
   // Échange de position avec la colonne voisine.
   const swap = useProductMutation(async (other: ProductColumn) => {
     const a = await supabase.from('product_columns').update({ position: other.position }).eq('id', column.id)
@@ -255,13 +266,13 @@ function Column({
         </p>
       )}
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-        {cards.map((c) => <DraggableCard key={c.id} card={c} onOpen={() => onOpen(c)} />)}
+        {cards.map((c) => <DraggableCard key={c.id} card={c} cover={coverOf(covers, c)} onOpen={() => onOpen(c)} />)}
         {!cards.length && (
           <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">Glissez une carte ici</p>
         )}
       </div>
       <button onClick={onAdd} className="m-2 mt-0 flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
-        <Plus className="size-4" /> Ajouter un produit
+        <Plus className="size-4" /> Ajouter une carte
       </button>
 
       <DeleteGuard
@@ -277,59 +288,67 @@ function Column({
   )
 }
 
-function DraggableCard({ card, onOpen }: { card: ProductCard; onOpen: () => void }) {
+function DraggableCard({ card, cover, onOpen }: { card: ProductCard; cover?: string; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id })
   return (
     <div ref={setNodeRef} {...attributes} {...listeners} onClick={onOpen} className={cn('touch-manipulation', isDragging && 'opacity-30')}>
-      <CardFace card={card} />
+      <CardFace card={card} cover={cover} />
     </div>
   )
 }
 
-export function CardFace({ card, overlay }: { card: ProductCard; overlay?: boolean }) {
+const coverOf = (covers: Record<string, string>, c: ProductCard) => (c.photos?.[0] ? covers[c.photos[0]] : undefined)
+
+/** Carte façon Trello : grande photo de couverture, titre, puis petits repères. */
+export function CardFace({ card, cover, overlay }: { card: ProductCard; cover?: string; overlay?: boolean }) {
   const profit = effectiveProfit(card)
   const roi = effectiveRoi(card)
   const verdict = VERDICTS.find((v) => v.value === card.verdict)
+  const nbPhotos = card.photos?.length ?? 0
+  const img = cover ?? (nbPhotos ? undefined : card.image_url ?? undefined)
+  const stats = [card.monthly_sales != null && `${intFr(card.monthly_sales)} ventes/mois`, card.bsr != null && `BSR ${intFr(card.bsr)}`]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <article
       className={cn(
-        'cursor-pointer rounded-lg border bg-card p-2.5 shadow-sm transition hover:border-primary/40',
+        'cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary/40',
         overlay && 'w-[280px] rotate-2 border-primary/60 shadow-xl',
       )}
     >
-      <div className="flex gap-2.5">
-        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/90">
-          {card.image_url ? (
-            <img src={card.image_url} alt="" loading="lazy" className="size-full object-contain" />
-          ) : (
-            <ImageOff className="size-4 text-zinc-400" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[13px] font-medium leading-snug">{card.title}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-            <span className={cn('font-semibold', profit == null ? 'text-muted-foreground' : profit >= 0 ? 'text-primary' : 'text-red-400')}>
-              {money(profit)}
-            </span>
-            {roi != null && <span className="text-muted-foreground">· ROI {intFr(Math.round(roi))} %</span>}
-          </div>
-        </div>
-      </div>
-      {(card.monthly_sales != null || card.bsr != null || verdict || card.received_at) && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {[card.monthly_sales != null && `${intFr(card.monthly_sales)} ventes/mois`, card.bsr != null && `BSR ${intFr(card.bsr)}`]
-            .filter(Boolean)
-            .join(' · ')}
-          <span className="ml-auto flex items-center gap-1">
-            {card.received_at && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-300">
-                <PackageCheck className="size-3" /> Reçu
-              </span>
-            )}
-            {verdict && <span className={cn('rounded-full px-1.5 py-0.5 ring-1', verdict.className)}>{verdict.label}</span>}
-          </span>
+      {(img || nbPhotos > 0) && (
+        <div className="aspect-[4/3] w-full bg-white/5">
+          {img && <img src={img} alt="" loading="lazy" draggable={false} className="size-full object-cover" />}
         </div>
       )}
+      <div className="p-2.5">
+        <p className="line-clamp-3 text-[13px] font-medium leading-snug">{card.title}</p>
+        {(profit != null || roi != null) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+            {profit != null && <span className={cn('font-semibold', profit >= 0 ? 'text-primary' : 'text-red-400')}>{money(profit)}</span>}
+            {roi != null && <span className="text-muted-foreground">ROI {intFr(Math.round(roi))} %</span>}
+          </div>
+        )}
+        {(card.notes || nbPhotos > 1 || stats || verdict || card.received_at) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            {card.notes && <AlignLeft className="size-3.5" aria-label="A des notes" />}
+            {nbPhotos > 1 && (
+              <span className="inline-flex items-center gap-0.5" title={`${nbPhotos} photos`}>
+                <Images className="size-3.5" /> {nbPhotos}
+              </span>
+            )}
+            {stats && <span>{stats}</span>}
+            <span className="ml-auto flex items-center gap-1">
+              {card.received_at && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-300">
+                  <PackageCheck className="size-3" /> Reçu
+                </span>
+              )}
+              {verdict && <span className={cn('rounded-full px-1.5 py-0.5 ring-1', verdict.className)}>{verdict.label}</span>}
+            </span>
+          </div>
+        )}
+      </div>
     </article>
   )
 }

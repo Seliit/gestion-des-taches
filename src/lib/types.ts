@@ -170,6 +170,8 @@ export interface ProductCard {
   received_at: string | null
   verdict: ProductVerdict | null
   in_cart: boolean
+  /** Chemins des photos dans le stockage « product-photos » ; la première sert de couverture. */
+  photos: string[]
   created_by: string | null
   created_at: string
   updated_at: string

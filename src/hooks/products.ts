@@ -99,20 +99,25 @@ export function useUpdateProductCard(companyId?: string | null) {
   })
 }
 
-export type LookupResult = Partial<
-  Pick<ProductCard, 'title' | 'image_url' | 'asin' | 'ean' | 'amazon_url' | 'sell_price' | 'monthly_sales' | 'bsr' | 'amazon_fees'>
->
+export const PHOTO_BUCKET = 'product-photos'
 
 /**
- * Recherche Amazon en lecture seule via la fonction serveur « product-lookup »
- * (clé API côté serveur uniquement). Renvoie null si l'API n'est pas branchée.
+ * Liens temporaires (1 h) vers les photos privées des cartes, demandés en une seule fois.
+ * Renvoie un dictionnaire chemin → URL.
  */
-export async function lookupProduct(q: { asin?: string; ean?: string }): Promise<LookupResult | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('product-lookup', { body: q })
-    if (error || !data || (data as { error?: string }).error) return null
-    return data as LookupResult
-  } catch {
-    return null
-  }
+export function usePhotoUrls(paths: string[]) {
+  const key = [...new Set(paths)].sort()
+  return useQuery({
+    queryKey: ['product_photo_urls', key],
+    enabled: key.length > 0,
+    staleTime: 50 * 60 * 1000,
+    gcTime: 55 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(key, 3600)
+      if (error) throw error
+      const out: Record<string, string> = {}
+      for (const d of data ?? []) if (d.path && d.signedUrl) out[d.path] = d.signedUrl
+      return out
+    },
+  })
 }

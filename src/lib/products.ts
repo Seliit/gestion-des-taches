@@ -41,7 +41,8 @@ export function byProfitability(a: ProductCard, b: ProductCard) {
   if (pa !== pb) return (pb ?? -Infinity) - (pa ?? -Infinity)
   const ra = effectiveRoi(a), rb = effectiveRoi(b)
   if (ra !== rb) return (rb ?? -Infinity) - (ra ?? -Infinity)
-  return a.title.localeCompare(b.title)
+  // Sans chiffres : ordre d'ajout, comme dans Trello.
+  return a.created_at.localeCompare(b.created_at)
 }
 
 export const round2 = (n: number) => Math.round(n * 100) / 100
@@ -49,19 +50,6 @@ export const round2 = (n: number) => Math.round(n * 100) / 100
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' })
 export const money = (n: number | null | undefined) => (n == null ? '—' : eur.format(Number(n)))
 export const intFr = (n: number | null | undefined) => (n == null ? '—' : new Intl.NumberFormat('fr-FR').format(Number(n)))
-
-/** Analyse ce qui est collé dans l'ajout rapide : lien Amazon (→ ASIN), ASIN seul ou EAN. */
-export function parseQuickInput(raw: string): { asin?: string; ean?: string; amazon_url?: string } {
-  const s = raw.trim()
-  if (!s) return {}
-  const m = s.match(/(?:\/dp\/|\/gp\/product\/|\/gp\/aw\/d\/|\/product\/)([A-Z0-9]{10})(?:[/?#]|$)/i)
-  if (m) return { asin: m[1].toUpperCase(), amazon_url: s.startsWith('http') ? s : `https://${s}` }
-  if (/^https?:\/\//i.test(s)) return { amazon_url: s }
-  const digits = s.replace(/\s/g, '')
-  if (/^\d{8,14}$/.test(digits)) return { ean: digits }
-  if (/^[A-Z0-9]{10}$/i.test(s)) return { asin: s.toUpperCase(), amazon_url: `https://www.amazon.fr/dp/${s.toUpperCase()}` }
-  return {}
-}
 
 /** Champs numériques : accepte « 12,50 », « 12.5 € », vide → null. */
 export function parseNum(v: string): number | null {
