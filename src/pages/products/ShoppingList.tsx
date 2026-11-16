@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, ImageOff, RotateCcw, ShoppingCart, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState, Skeleton } from '@/components/ui/misc'
-import { useProductCards, useProductColumns, useProductMutation, useUpdateProductCard } from '@/hooks/products'
+import { usePhotoUrls, useProductCards, useProductColumns, useProductMutation, useUpdateProductCard } from '@/hooks/products'
 import { byProfitability, money } from '@/lib/products'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,8 @@ export default function ShoppingList() {
   const cards = useProductCards(companyId)
   const update = useUpdateProductCard(companyId)
   const [params, setParams] = useSearchParams()
+  const coverPaths = useMemo(() => (cards.data ?? []).flatMap((c) => (c.photos?.[0] ? [c.photos[0]] : [])), [cards.data])
+  const covers = usePhotoUrls(coverPaths).data ?? {}
 
   const stores = (columns.data ?? []).filter((c) => c.is_store)
   const picked = (params.get('magasins') ?? '').split(',').filter(Boolean)
@@ -122,7 +124,10 @@ export default function ShoppingList() {
                         {c.in_cart && <Check className="size-5" strokeWidth={3} />}
                       </span>
                       <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/90">
-                        {c.image_url ? <img src={c.image_url} alt="" loading="lazy" className="size-full object-contain" /> : <ImageOff className="size-4 text-zinc-400" />}
+                        {(() => {
+                          const src = c.photos?.[0] ? covers[c.photos[0]] : c.image_url
+                          return src ? <img src={src} alt="" loading="lazy" className="size-full object-cover" /> : <ImageOff className="size-4 text-zinc-400" />
+                        })()}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className={cn('line-clamp-2 text-[15px] font-medium leading-snug', c.in_cart && 'line-through')}>{c.title}</span>

@@ -302,6 +302,21 @@ insert into product_columns (id, company_id, name) values ('d0000000-0000-0000-0
 select t.throws($q$insert into product_cards (company_id, column_id, title) values ('c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000002', 'x')$q$, 'carte S1 rangée dans une colonne de S2 refusée');
 insert into product_cards (company_id, column_id, title) values ('c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Produit S1');
 select t.throws($q$update product_cards set company_id = 'c0000000-0000-0000-0000-000000000002', column_id = 'd0000000-0000-0000-0000-000000000002'$q$, 'déplacement de carte vers une autre société refusé');
+-- Photos des cartes (stockage privé product-photos)
+:as_admin2
+insert into storage.objects (bucket_id, name) values ('product-photos', 'c0000000-0000-0000-0000-000000000002/e0000000-0000-0000-0000-000000000002/p1.jpg');
+update product_cards set photos = array['c0000000-0000-0000-0000-000000000002/e0000000-0000-0000-0000-000000000002/p1.jpg'] where id = 'e0000000-0000-0000-0000-000000000002';
+select t.ok((select array_length(photos, 1) from product_cards where id = 'e0000000-0000-0000-0000-000000000002') = 1, 'admin S2 ajoute une photo à sa carte');
+:as_emp3
+select t.ok((select count(*) from storage.objects where bucket_id = 'product-photos') = 1, 'membre S2 voit les photos des cartes de S2');
+:as_admin1
+select t.ok((select count(*) from storage.objects where bucket_id = 'product-photos') = 0, 'admin S1 ne voit pas les photos de S2');
+select t.ok(t.rows($q$delete from storage.objects where bucket_id = 'product-photos'$q$) = 0, 'admin S1 ne peut pas supprimer les photos de S2');
+select t.throws($q$insert into storage.objects (bucket_id, name) values ('product-photos', 'c0000000-0000-0000-0000-000000000002/e0000000-0000-0000-0000-000000000002/x.jpg')$q$, 'admin S1 ne dépose pas de photo sur une carte de S2');
+select t.throws($q$insert into storage.objects (bucket_id, name) values ('product-photos', 'c0000000-0000-0000-0000-000000000001/e0000000-0000-0000-0000-000000000002/x.jpg')$q$, 'photo : chemin de société falsifié refusé');
+:as_emp3
+delete from storage.objects where bucket_id = 'product-photos';
+select t.ok((select count(*) from storage.objects where bucket_id = 'product-photos') = 0, 'membre S2 supprime une photo de S2');
 :as_anon
 select t.throws('select * from product_cards', 'anonyme : aucun accès aux cartes produit');
 :as_super
