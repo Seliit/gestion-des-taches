@@ -322,6 +322,27 @@ select t.throws('select * from product_cards', 'anonyme : aucun accès aux carte
 :as_super
 select t.ok((select count(*) from product_cards) = 2, 'super-admin voit les cartes produit de toutes les sociétés');
 
+-- ===================== 15. Stock à perte (accueil) =====================
+:as_super
+select t.ok((select count(*) from loss_stock_items) = 10, 'super-admin voit la liste du stock à perte');
+update loss_stock_items set sold = 3 where name = 'Barbie';
+select t.ok((select sold from loss_stock_items where name = 'Barbie') = 3, 'super-admin note des ventes');
+select t.throws($q$update loss_stock_items set sold = 12 where name = 'Barbie'$q$, 'impossible de vendre plus que la quantité');
+:as_admin1
+select t.ok((select count(*) from loss_stock_items) = 0, 'admin de société ne voit pas le stock à perte');
+select t.throws($q$insert into loss_stock_items (name, qty, unit_price) values ('x', 1, 1)$q$, 'admin de société ne peut pas ajouter de ligne');
+:as_anon
+select t.throws('select * from loss_stock_items', 'anonyme : aucun accès au stock à perte');
+
+-- ===================== 16. Résumé du matin =====================
+:as_pg
+insert into tasks (company_id, title, assignee_id, priority, due_date) values ('c0000000-0000-0000-0000-000000000002', 'Payer la TVA', '00000000-0000-0000-0000-0000000000a2', 'urgent', now() - interval '2 days');
+select t.ok(public.send_morning_digest(true) > 0, 'résumé du matin envoyé aux personnes qui ont des tâches');
+select t.ok(public.send_morning_digest(true) = 0, 'résumé du matin : une seule fois par jour');
+select t.ok(exists (select 1 from notifications where title = 'Ta journée' and link = '/ma-liste'), 'résumé du matin : lien vers Ma liste');
+:as_emp1
+select t.throws('select public.send_morning_digest(true)', 'résumé du matin : non déclenchable depuis l''app');
+
 \o
 reset role;
 \echo 'Tous les tests de sécurité sont passés.'
