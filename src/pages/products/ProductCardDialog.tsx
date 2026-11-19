@@ -59,6 +59,7 @@ export function ProductCardDialog({
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [viewing, setViewing] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export function ProductCardDialog({
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((s) => ({ ...s, [k]: v }))
 
-  function addFiles(list: FileList | null) {
+  function addFiles(list: FileList | File[] | null | undefined) {
     const files = Array.from(list ?? []).filter((file) => file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name))
     if (!files.length) return
     const room = MAX_PHOTOS - photos.length
@@ -187,7 +188,35 @@ export function ProductCardDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
-      <DialogContent className="theme-produits dark max-h-[92dvh] max-w-2xl overflow-y-auto text-foreground sm:max-w-2xl">
+      <DialogContent
+        className="theme-produits dark max-h-[92dvh] max-w-2xl overflow-y-auto text-foreground sm:max-w-2xl"
+        // Glisser des photos depuis le Finder / l'explorateur, ou les coller (Cmd + V).
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('Files')) return
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false)
+        }}
+        onDrop={(e) => {
+          if (!e.dataTransfer.files.length) return
+          e.preventDefault()
+          setDragOver(false)
+          addFiles(e.dataTransfer.files)
+        }}
+        onPaste={(e) => {
+          const files = Array.from(e.clipboardData.files)
+          if (!files.length) return
+          e.preventDefault()
+          addFiles(files)
+        }}
+      >
+        {dragOver && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-background/85 text-sm font-medium text-primary">
+            Déposez les photos ici
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle>{card ? 'Carte' : 'Nouvelle carte'}</DialogTitle>
           <DialogDescription className="sr-only">Titre, photos et notes de la carte.</DialogDescription>
@@ -268,6 +297,7 @@ export function ProductCardDialog({
               >
                 <ImagePlus className="size-5" />
                 Ajouter des photos
+                <span className="text-xs">ou glissez-les ici, ou collez-les (Cmd + V)</span>
               </button>
             )}
           </div>
