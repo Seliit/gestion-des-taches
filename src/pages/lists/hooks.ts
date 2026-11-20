@@ -20,6 +20,7 @@ export interface QuickListItem {
   done: boolean
   done_at: string | null
   position: number
+  note: string | null
 }
 
 export function useQuickLists() {
