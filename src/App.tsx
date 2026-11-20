@@ -12,6 +12,9 @@ import Teams from '@/pages/Teams'
 import Reports from '@/pages/Reports'
 import ActivityPage from '@/pages/ActivityPage'
 import MyList from '@/pages/MyList'
+import Lists from '@/pages/lists/Lists'
+import ListDetail from '@/pages/lists/ListDetail'
+import StockPage from '@/pages/StockPage'
 import ProductBoard from '@/pages/products/ProductBoard'
 import ShoppingList from '@/pages/products/ShoppingList'
 import { AllTasks, CalendarPage, InvitationsPage, MyTasks, NotificationsPage, TeamView, Today } from '@/pages/TaskPages'
@@ -44,8 +47,12 @@ export default function App() {
       <Route path="/connexion" element={<Login />} />
       <Route path="/definir-mot-de-passe" element={<SetPassword />} />
       <Route element={<Protected />}>
-        <Route index element={<Home />} />
+        <Route index element={<Lists />} />
+        <Route path="tableau-de-bord" element={<Dashboard />} />
+        <Route path="stock" element={<StockPage />} />
         <Route path="ma-liste" element={<MyList />} />
+        <Route path="listes" element={<Navigate to="/" replace />} />
+        <Route path="listes/:id" element={<ListDetail />} />
         <Route path="produits" element={<ProductBoard />} />
         <Route path="produits/courses" element={<ShoppingList />} />
         <Route path="configuration" element={<Setup />} />
@@ -74,23 +81,4 @@ export default function App() {
       </Route>
     </Routes>
   )
-}
-
-/**
- * Sur téléphone, quand l'app est ouverte depuis l'écran d'accueil, on arrive directement sur « Ma liste »
- * (une seule fois par ouverture : le tableau de bord reste accessible ensuite).
- */
-function Home() {
-  let redirect = false
-  try {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
-    if (standalone && window.innerWidth < 768 && !sessionStorage.getItem('pilotage-home-vu')) {
-      sessionStorage.setItem('pilotage-home-vu', '1')
-      redirect = true
-    }
-  } catch {
-    /* stockage indisponible : on reste sur le tableau de bord */
-  }
-  return redirect ? <Navigate to="/ma-liste" replace /> : <Dashboard />
 }

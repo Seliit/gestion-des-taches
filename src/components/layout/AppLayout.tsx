@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Bell, Building2, CalendarDays, CheckSquare, ClipboardList, FolderKanban, History, LayoutDashboard, LogOut, Menu, Monitor, Moon,
-  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck, ListTodo, TrendingUp,
+  Search, Settings, Shield, Sun, Sunrise, User, Users, UsersRound, BarChart3, BellRing, Lock, UserCheck, ListTodo, TrendingUp, ListChecks, PackageX, MoreHorizontal, ChevronDown,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/misc'
 import { Button } from '@/components/ui/button'
@@ -57,56 +57,89 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const isAdminSomewhere = isSuperAdmin || memberships.some((m) => m.role === 'admin')
   const isManagerSomewhere = isAdminSomewhere || memberships.some((m) => m.role === 'manager') || (teams.data ?? []).some((t) => t.manager_id === session?.user.id)
   const p = { onClick: onNavigate }
+  // « Plus » reste ouvert si on l'a ouvert (mémorisé sur cet appareil).
+  const [moreOpen, setMoreOpen] = useState(() => {
+    try {
+      return localStorage.getItem('nav:plus') === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('nav:plus', moreOpen ? '1' : '0')
+    } catch {
+      /* ignoré */
+    }
+  }, [moreOpen])
 
   return (
     <nav className="flex flex-col px-2 pb-6">
-      <Section title={isSuperAdmin ? 'Espace global' : 'Mon espace'}>
-        <NavItem to="/" end icon={LayoutDashboard} label="Vue d’ensemble" {...p} />
-        <NavItem to="/ma-liste" icon={ListTodo} label="Ma liste" {...p} />
-        <NavItem to="/aujourdhui" icon={Sunrise} label="Aujourd’hui" {...p} />
-        <NavItem to="/mes-taches" icon={CheckSquare} label="Mes tâches" {...p} />
-        <NavItem to="/taches" icon={ClipboardList} label={isSuperAdmin ? 'Toutes les tâches' : 'Tâches'} {...p} />
-        {isManagerSomewhere && <NavItem to="/equipe" icon={UserCheck} label="Vue équipe" {...p} />}
-        <NavItem to="/calendrier" icon={CalendarDays} label="Calendrier" {...p} />
-        <NavItem to="/notifications" icon={Bell} label="Notifications" badge={unread} {...p} />
-      </Section>
-
-      <Section title="Mes sociétés">
-        {companies.data?.map((c) => (
-          <NavLink
-            key={c.id}
-            to={`/societes/${c.id}`}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
-                isActive && 'bg-accent font-medium text-foreground',
-              )
-            }
-          >
-            <CompanyLogo company={c} size={18} />
-            <span className="truncate">{c.name}</span>
-          </NavLink>
-        ))}
-        {!companies.data?.length && <p className="px-2.5 text-xs text-muted-foreground">Aucune société</p>}
-      </Section>
-
-      <Section title="Gestion">
+      {/* L'essentiel, en gros. */}
+      <div className="grid gap-1 pt-2 [&_a]:py-2.5 [&_a]:text-[15px]">
+        <NavItem to="/" end icon={ListChecks} label="Listes" {...p} />
         <NavItem to="/produits" icon={TrendingUp} label="Idées produits" {...p} />
-        <NavItem to="/projets" icon={FolderKanban} label="Projets" {...p} />
-        <NavItem to="/collaborateurs" icon={Users} label="Collaborateurs" {...p} />
-        <NavItem to="/equipes" icon={UsersRound} label="Équipes" {...p} />
-        {isManagerSomewhere && <NavItem to="/rapports" icon={BarChart3} label="Rapports" {...p} />}
-        <NavItem to="/historique" icon={History} label="Historique" {...p} />
-      </Section>
+        {isSuperAdmin && <NavItem to="/stock" icon={PackageX} label="Stock à perte" {...p} />}
+        <NavItem to="/notifications" icon={Bell} label="Notifications" badge={unread} {...p} />
+      </div>
 
-      <Section title="Paramètres">
-        <NavItem to="/parametres/profil" icon={User} label="Mon profil" {...p} />
-        {isAdminSomewhere && <NavItem to="/parametres/societes" icon={Building2} label="Sociétés" {...p} />}
-        {isAdminSomewhere && <NavItem to="/parametres/roles" icon={Shield} label="Rôles et permissions" {...p} />}
-        <NavItem to="/parametres/notifications" icon={BellRing} label="Notifications" {...p} />
-        <NavItem to="/parametres/securite" icon={Lock} label="Sécurité" {...p} />
-      </Section>
+      {/* Tout le reste, replié par défaut. */}
+      <details
+        className="group mt-4 border-t pt-2"
+        open={moreOpen}
+        onToggle={(e) => setMoreOpen((e.target as HTMLDetailsElement).open)}
+      >
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <MoreHorizontal className="size-4" />
+          <span className="flex-1">Plus</span>
+          <ChevronDown className="size-4 transition group-open:rotate-180" />
+        </summary>
+        <Section title="Tâches">
+          <NavItem to="/tableau-de-bord" icon={LayoutDashboard} label="Vue d’ensemble" {...p} />
+          <NavItem to="/ma-liste" icon={ListTodo} label="Ma liste de tâches" {...p} />
+          <NavItem to="/aujourdhui" icon={Sunrise} label="Aujourd’hui" {...p} />
+          <NavItem to="/mes-taches" icon={CheckSquare} label="Mes tâches" {...p} />
+          <NavItem to="/taches" icon={ClipboardList} label={isSuperAdmin ? 'Toutes les tâches' : 'Tâches'} {...p} />
+          {isManagerSomewhere && <NavItem to="/equipe" icon={UserCheck} label="Vue équipe" {...p} />}
+          <NavItem to="/calendrier" icon={CalendarDays} label="Calendrier" {...p} />
+          <NavItem to="/projets" icon={FolderKanban} label="Projets" {...p} />
+        </Section>
+
+        <Section title="Sociétés">
+          {companies.data?.map((c) => (
+            <NavLink
+              key={c.id}
+              to={`/societes/${c.id}`}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
+                  isActive && 'bg-accent font-medium text-foreground',
+                )
+              }
+            >
+              <CompanyLogo company={c} size={18} />
+              <span className="truncate">{c.name}</span>
+            </NavLink>
+          ))}
+          {!companies.data?.length && <p className="px-2.5 text-xs text-muted-foreground">Aucune société</p>}
+        </Section>
+
+        <Section title="Gestion">
+          <NavItem to="/collaborateurs" icon={Users} label="Collaborateurs" {...p} />
+          <NavItem to="/equipes" icon={UsersRound} label="Équipes" {...p} />
+          {isManagerSomewhere && <NavItem to="/rapports" icon={BarChart3} label="Rapports" {...p} />}
+          <NavItem to="/historique" icon={History} label="Historique" {...p} />
+        </Section>
+
+        <Section title="Paramètres">
+          <NavItem to="/parametres/profil" icon={User} label="Mon profil" {...p} />
+          {isAdminSomewhere && <NavItem to="/parametres/societes" icon={Building2} label="Sociétés" {...p} />}
+          {isAdminSomewhere && <NavItem to="/parametres/roles" icon={Shield} label="Rôles et permissions" {...p} />}
+          <NavItem to="/parametres/notifications" icon={BellRing} label="Notifications" {...p} />
+          <NavItem to="/parametres/securite" icon={Lock} label="Sécurité" {...p} />
+        </Section>
+      </details>
     </nav>
   )
 }
@@ -138,6 +171,13 @@ function useRealtime() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_cards' }, () => {
         qc.invalidateQueries({ queryKey: ['product_cards'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quick_list_items' }, () => {
+        qc.invalidateQueries({ queryKey: ['quick_list'] })
+        qc.invalidateQueries({ queryKey: ['quick_lists'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quick_lists' }, () => {
+        qc.invalidateQueries({ queryKey: ['quick_lists'] })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'loss_stock_items' }, () => {
         qc.invalidateQueries({ queryKey: ['loss_stock_items'] })

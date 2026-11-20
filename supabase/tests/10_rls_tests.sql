@@ -343,6 +343,29 @@ select t.ok(exists (select 1 from notifications where title = 'Ta journée' and 
 :as_emp1
 select t.throws('select public.send_morning_digest(true)', 'résumé du matin : non déclenchable depuis l''app');
 
+-- ===================== 17. Listes simples =====================
+:as_admin1
+insert into quick_lists (id, title, assignee_id) values ('f1000000-0000-0000-0000-000000000001', 'Urgences', '00000000-0000-0000-0000-0000000000e2');
+insert into quick_list_items (list_id, section, text, position) values
+  ('f1000000-0000-0000-0000-000000000001', 'Uzeet', 'Relancer Cassandre', 1),
+  ('f1000000-0000-0000-0000-000000000001', 'SELIIT', 'Point tréso', 2);
+select t.ok((select count(*) from quick_list_items) = 2, 'l''auteur voit sa liste');
+:as_emp2
+select t.ok((select count(*) from quick_list_items) = 2, 'la personne qui reçoit la liste la voit');
+select t.ok(exists (select 1 from notifications where title = 'Nouvelle liste' and link = '/listes/f1000000-0000-0000-0000-000000000001'), 'la personne est prévenue');
+update quick_list_items set done = true where text = 'Relancer Cassandre';
+select t.ok((select done_at is not null from quick_list_items where text = 'Relancer Cassandre'), 'elle coche une ligne');
+select t.ok(t.rows('delete from quick_lists') = 0, 'elle ne peut pas supprimer la liste');
+:as_emp3
+select t.ok((select count(*) from quick_lists) = 0, 'un tiers ne voit pas la liste');
+select t.ok(t.rows('update quick_list_items set done = false') = 0, 'un tiers ne coche rien');
+select t.throws($q$insert into quick_list_items (list_id, text) values ('f1000000-0000-0000-0000-000000000001', 'x')$q$, 'un tiers n''ajoute pas de ligne');
+select t.throws($q$insert into quick_lists (title, created_by) values ('x', '00000000-0000-0000-0000-0000000000a1')$q$, 'impossible de créer une liste au nom d''un autre');
+:as_super
+select t.ok((select count(*) from quick_lists) = 1, 'super-admin voit toutes les listes');
+:as_anon
+select t.throws('select * from quick_lists', 'anonyme : aucun accès aux listes');
+
 \o
 reset role;
 \echo 'Tous les tests de sécurité sont passés.'
