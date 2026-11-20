@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Archive, Check, Copy, MessageCircle, PartyPopper, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Archive, Check, Copy, MessageCircle, PartyPopper, Plus, StickyNote, Trash2, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, Textarea } from '@/components/ui/input'
 import { EmptyState, Skeleton } from '@/components/ui/misc'
 import { useAuth } from '@/context/auth'
 import { useProfiles } from '@/hooks/data'
@@ -124,29 +124,14 @@ export default function ListDetail() {
               </h2>
             )}
             {[...its].sort((a, b) => Number(a.done) - Number(b.done) || a.position - b.position).map((it) => (
-              <div key={it.id} className={cn('flex items-center gap-3 rounded-xl border bg-card p-3 transition', it.done && 'opacity-55')}>
-                <button
-                  type="button"
-                  onClick={() => toggle.mutate({ id: it.id, done: !it.done })}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  aria-label={it.done ? 'Décocher' : 'Cocher'}
-                >
-                  <span
-                    className={cn(
-                      'flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                      it.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40',
-                    )}
-                  >
-                    {it.done && <Check className="size-5" strokeWidth={3} />}
-                  </span>
-                  <span className={cn('text-[15px] leading-snug', it.done && 'line-through')}>{it.text}</span>
-                </button>
-                {editing && (
-                  <Button variant="ghost" size="icon-sm" onClick={() => removeItem(it.id)} aria-label="Retirer la ligne">
-                    <X className="size-4" />
-                  </Button>
-                )}
-              </div>
+              <ItemRow
+                key={it.id}
+                item={it}
+                editing={editing}
+                onToggle={() => toggle.mutate({ id: it.id, done: !it.done })}
+                onRemove={() => removeItem(it.id)}
+                onSaved={refresh}
+              />
             ))}
             {editing && (
               <form
@@ -209,6 +194,93 @@ function ShareButtons({ message, phone, onCopy }: { message: string; phone?: str
         <a href={wa} target="_blank" rel="noreferrer"><MessageCircle className="size-4" /> Envoyer sur WhatsApp</a>
       </Button>
       <Button variant="outline" onClick={onCopy}><Copy className="size-4" /> Copier le message</Button>
+    </div>
+  )
+}
+
+/**
+ * Une ligne : le rond coche, le texte ouvre la ligne pour la corriger et y mettre une note.
+ */
+function ItemRow({
+  item, editing, onToggle, onRemove, onSaved,
+}: {
+  item: QuickListItem
+  editing: boolean
+  onToggle: () => void
+  onRemove: () => void
+  onSaved: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState(item.text)
+  const [note, setNote] = useState(item.note ?? '')
+  const [saving, setSaving] = useState(false)
+
+  function start() {
+    setText(item.text)
+    setNote(item.note ?? '')
+    setOpen(true)
+  }
+  async function save() {
+    if (!text.trim()) return toast.error('La ligne ne peut pas être vide.')
+    setSaving(true)
+    const { error } = await supabase
+      .from('quick_list_items')
+      .update({ text: text.trim().slice(0, 500), note: note.trim() || null })
+      .eq('id', item.id)
+    setSaving(false)
+    if (error) return toast.error(errorMessage(error))
+    setOpen(false)
+    onSaved()
+  }
+
+  return (
+    <div className={cn('rounded-xl border bg-card p-3 transition', item.done && !open && 'opacity-55')}>
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={item.done ? 'Décocher' : 'Cocher'}
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+            item.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40 active:bg-muted',
+          )}
+        >
+          {item.done && <Check className="size-5" strokeWidth={3} />}
+        </button>
+        <button type="button" onClick={() => (open ? setOpen(false) : start())} className="min-w-0 flex-1 pt-1 text-left">
+          <span className={cn('block text-[15px] leading-snug', item.done && 'line-through')}>{item.text}</span>
+          {item.note && !open && (
+            <span className="mt-1 flex items-start gap-1 text-sm text-muted-foreground">
+              <StickyNote className="mt-0.5 size-3.5 shrink-0" />
+              <span className="line-clamp-3 whitespace-pre-line">{item.note}</span>
+            </span>
+          )}
+          {!item.note && !open && !item.done && (
+            <span className="mt-0.5 block text-xs text-muted-foreground/70">+ note</span>
+          )}
+        </button>
+        {editing && (
+          <Button variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Retirer la ligne">
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-3 grid gap-2 pl-11">
+          <Input value={text} onChange={(e) => setText(e.target.value)} aria-label="Texte de la ligne" />
+          <Textarea
+            autoFocus
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note (ex. : appelé lundi, attend sa réponse…)"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={save} disabled={saving}>Enregistrer</Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

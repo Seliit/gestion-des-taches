@@ -39,7 +39,7 @@ export function parseQuickList(raw: string): { title: string | null; items: Pars
 }
 
 /** Texte prêt à envoyer (WhatsApp, SMS) : titre, lien, puis les lignes restantes par bloc. */
-export function listToMessage(title: string, link: string, items: { section: string | null; text: string; done: boolean }[]) {
+export function listToMessage(title: string, link: string, items: { section: string | null; text: string; done: boolean; note?: string | null }[]) {
   const out = [title, link, '']
   let current: string | null | undefined
   for (const it of items.filter((i) => !i.done)) {
@@ -48,6 +48,7 @@ export function listToMessage(title: string, link: string, items: { section: str
       if (current) out.push('', `${current} :`)
     }
     out.push(`• ${it.text}`)
+    if (it.note) out.push(`   ↳ ${it.note.replace(/\s*\n\s*/g, ' ')}`)
   }
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }

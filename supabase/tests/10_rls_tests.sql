@@ -355,6 +355,8 @@ select t.ok((select count(*) from quick_list_items) = 2, 'la personne qui reçoi
 select t.ok(exists (select 1 from notifications where title = 'Nouvelle liste' and link = '/listes/f1000000-0000-0000-0000-000000000001'), 'la personne est prévenue');
 update quick_list_items set done = true where text = 'Relancer Cassandre';
 select t.ok((select done_at is not null from quick_list_items where text = 'Relancer Cassandre'), 'elle coche une ligne');
+update quick_list_items set note = 'Appelée lundi' where text = 'Point tréso';
+select t.ok((select note from quick_list_items where text = 'Point tréso') = 'Appelée lundi', 'elle ajoute une note sur une ligne');
 select t.ok(t.rows('delete from quick_lists') = 0, 'elle ne peut pas supprimer la liste');
 :as_emp3
 select t.ok((select count(*) from quick_lists) = 0, 'un tiers ne voit pas la liste');
