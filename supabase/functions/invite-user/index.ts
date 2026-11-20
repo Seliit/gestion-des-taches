@@ -3,7 +3,17 @@
 //    qu'il est administrateur de la société et qu'il ne crée pas d'administrateur sans être super-admin.
 // 2. Seulement ensuite, la clé service (jamais exposée au navigateur) envoie l'e-mail d'invitation.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { corsHeaders, json } from '../_shared/cors.ts'
+
+// Fichier autonome : peut être collé tel quel dans l'éditeur de fonctions du dashboard Supabase.
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': Deno.env.get('APP_URL') ?? '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+export function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
