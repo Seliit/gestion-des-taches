@@ -27,7 +27,10 @@ import { ProductCardDialog } from './ProductCardDialog'
 
 const STORAGE_KEY = 'produits:societe'
 
-/** Société affichée : ?societe=…, sinon la dernière utilisée, sinon celle dont le nom contient « vinted », sinon la première. */
+/**
+ * Le tableau « Idées produits » ne sert qu'à Amazon : on affiche toujours la société dont le nom
+ * contient « amazon ». Sans société Amazon : ?societe=…, sinon la dernière utilisée, sinon la première.
+ */
 export function useBoardCompany() {
   const [params, setParams] = useSearchParams()
   const companies = useCompanies()
@@ -39,8 +42,8 @@ export function useBoardCompany() {
     /* stockage indisponible */
   }
   const wanted = params.get('societe') ?? saved
-  const company: Company | undefined =
-    list.find((c) => c.id === wanted) ?? list.find((c) => /vinted/i.test(c.name)) ?? list[0]
+  const amazon = list.find((c) => /amazon/i.test(c.name))
+  const company: Company | undefined = amazon ?? list.find((c) => c.id === wanted) ?? list[0]
   const select = (id: string) => {
     try {
       localStorage.setItem(STORAGE_KEY, id)
@@ -52,7 +55,8 @@ export function useBoardCompany() {
       return p
     })
   }
-  return { company, companies: list, loading: companies.isLoading, select }
+  // Avec une société Amazon, pas de choix de société.
+  return { company, companies: amazon ? [amazon] : list, loading: companies.isLoading, select }
 }
 
 export default function ProductBoard() {
