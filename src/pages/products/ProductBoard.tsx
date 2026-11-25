@@ -326,7 +326,14 @@ export function CardFace({ card, cover, overlay }: { card: ProductCard; cover?: 
         </div>
       )}
       <div className="p-2.5">
-        <p className="line-clamp-3 text-[13px] font-medium leading-snug">{card.title}</p>
+        <div className="flex items-start gap-2">
+          <p className="line-clamp-3 min-w-0 flex-1 text-[13px] font-medium leading-snug">{card.title}</p>
+          {card.quantity != null && (
+            <span className="shrink-0 rounded-md bg-primary/15 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary" title="Quantité">
+              × {intFr(card.quantity)}
+            </span>
+          )}
+        </div>
         {(profit != null || roi != null) && (
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
             {profit != null && <span className={cn('font-semibold', profit >= 0 ? 'text-primary' : 'text-red-400')}>{money(profit)}</span>}

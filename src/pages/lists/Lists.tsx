@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronRight, ListChecks, Loader2, Send } from 'lucide-react'
+import { ChevronRight, ListChecks, Loader2, Repeat, Send, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/AppLayout'
@@ -13,10 +13,10 @@ import { Skeleton } from '@/components/ui/misc'
 import { useAuth } from '@/context/auth'
 import { useProfiles } from '@/hooks/data'
 import { fullName } from '@/lib/labels'
-import { parseQuickList } from '@/lib/quickList'
+import { itemsToText, parseQuickList } from '@/lib/quickList'
 import { errorMessage, supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { useQuickLists } from './hooks'
+import { useQuickList, useQuickLists } from './hooks'
 
 const LAST_PERSON = 'listes:personne'
 
@@ -96,7 +96,20 @@ function ListGroup({
 function NewList({ people, myId }: { people: { id: string; first_name: string; last_name: string; email: string }[]; myId?: string }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const [params, setParams] = useSearchParams()
+  const [person, setPerson] = useState<string>('')
+  const carryId = params.get('reporter') ?? undefined
+  const carry = useQuickList(carryId)
   const [text, setText] = useState('')
+  // Reprise d'une liste : on pré-remplit avec les lignes pas encore faites.
+  const [prefilled, setPrefilled] = useState<string | null>(null)
+  useEffect(() => {
+    if (!carryId || !carry.data?.list || prefilled === carryId) return
+    setPrefilled(carryId)
+    setText(itemsToText(carry.data.items.filter((i) => !i.done)) + '\n\n')
+    if (carry.data.list.assignee_id) setPerson(carry.data.list.assignee_id)
+  }, [carryId, carry.data, prefilled])
+  const carryLeft = carry.data?.items.filter((i) => !i.done) ?? []
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
   let saved = ''
@@ -106,7 +119,6 @@ function NewList({ people, myId }: { people: { id: string; first_name: string; l
     /* stockage indisponible */
   }
   const fallback = people.find((p) => /raph/i.test(`${p.first_name} ${p.email}`)) ?? people[0]
-  const [person, setPerson] = useState<string>('')
   const assignee = person || (people.some((p) => p.id === saved) ? saved : fallback?.id ?? myId ?? '')
 
   const parsed = parseQuickList(text)
@@ -132,6 +144,15 @@ function NewList({ people, myId }: { people: { id: string; first_name: string; l
         .from('quick_list_items')
         .insert(parsed.items.map((it, i) => ({ list_id: data.id, section: it.section?.slice(0, 80) ?? null, text: it.text, position: i + 1 })))
       if (e2) throw e2
+      if (carryId && carry.data?.list) {
+        // Les notes suivent les lignes reprises (même bloc, même texte), puis l'ancienne liste est archivée.
+        const { data: fresh } = await supabase.from('quick_list_items').select('id, section, text').eq('list_id', data.id)
+        for (const old of carryLeft.filter((i) => i.note)) {
+          const match = (fresh ?? []).find((n) => n.text === old.text && (n.section ?? null) === (old.section ?? null))
+          if (match) await supabase.from('quick_list_items').update({ note: old.note }).eq('id', match.id)
+        }
+        await supabase.from('quick_lists').update({ archived_at: new Date().toISOString() }).eq('id', carryId)
+      }
       qc.invalidateQueries({ queryKey: ['quick_lists'] })
       navigate(`/listes/${data.id}?nouvelle=1`)
     } catch (e) {
@@ -144,6 +165,29 @@ function NewList({ people, myId }: { people: { id: string; first_name: string; l
   return (
     <Card className="grid gap-3 p-4">
       <h2 className="font-semibold">Nouvelle liste</h2>
+      {carryId && carry.data?.list && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Repeat className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p className="flex-1">
+            Reprise de « {carry.data.list.title} » : les {carryLeft.length} ligne{carryLeft.length > 1 ? 's' : ''} pas encore faite{carryLeft.length > 1 ? 's' : ''} sont
+            déjà dans la liste. Ajoutez les nouvelles, puis créez la liste : l'ancienne sera archivée.
+          </p>
+          <button
+            type="button"
+            aria-label="Annuler la reprise"
+            onClick={() => {
+              setText('')
+              setPrefilled(null)
+              setParams((p) => {
+                p.delete('reporter')
+                return p
+              })
+            }}
+          >
+            <X className="size-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
       <Textarea
         rows={10}
         value={text}
