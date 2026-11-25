@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Archive, Check, Copy, MessageCircle, PartyPopper, Plus, StickyNote, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Archive, Check, Copy, MessageCircle, PartyPopper, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -155,6 +155,13 @@ export default function ListDetail() {
 
       <div className="mt-2 grid gap-2 border-t pt-4">
         {!params.get('nouvelle') && canManage && <ShareButtons message={message} phone={assignee?.phone} onCopy={copy} />}
+        {canManage && items.some((i) => !i.done) && (
+          <Button variant="outline" asChild>
+            <Link to={`/?reporter=${list.id}`}>
+              <Repeat className="size-4" /> Reporter le reste dans une nouvelle liste
+            </Link>
+          </Button>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setEditing((v) => !v)}>
             {editing ? 'Terminer' : 'Modifier la liste'}

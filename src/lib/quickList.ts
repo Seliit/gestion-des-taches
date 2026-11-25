@@ -52,3 +52,17 @@ export function listToMessage(title: string, link: string, items: { section: str
   }
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
+
+/** Remet des lignes sous forme de texte à coller (« Uzeet : » puis « * ligne »), pour reprendre une liste. */
+export function itemsToText(items: { section: string | null; text: string }[]) {
+  const out: string[] = []
+  let current: string | null | undefined
+  for (const it of items) {
+    if (it.section !== current) {
+      current = it.section
+      if (current) out.push(out.length ? '' : '', `${current} :`)
+    }
+    out.push(`* ${it.text}`)
+  }
+  return out.join('\n').trim()
+}

@@ -132,6 +132,7 @@ export default function ShoppingList() {
                       <span className="min-w-0 flex-1">
                         <span className={cn('line-clamp-2 text-[15px] font-medium leading-snug', c.in_cart && 'line-through')}>{c.title}</span>
                         <span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                          {c.quantity != null && <span className="font-semibold text-foreground">Qté {c.quantity}</span>}
                           {c.buy_price != null && <span>Achat max {money(c.buy_price)}</span>}
                           {c.ean && <span>EAN {c.ean}</span>}
                         </span>

@@ -16,7 +16,7 @@ import { DeleteGuard } from './DeleteGuard'
 
 type Form = Record<
   'title' | 'ean' | 'asin' | 'amazon_url' | 'supplier_url' | 'buy_price' | 'sell_price' | 'amazon_fees' |
-  'profit' | 'roi' | 'monthly_sales' | 'bsr' | 'notes' | 'column_id',
+  'profit' | 'roi' | 'monthly_sales' | 'bsr' | 'notes' | 'column_id' | 'quantity',
   string
 > & { verdict: ProductVerdict | null; received: boolean }
 
@@ -32,6 +32,7 @@ function toForm(c: Partial<ProductCard> | null, columnId: string): Form {
     amazon_url: c?.amazon_url ?? '', supplier_url: c?.supplier_url ?? '',
     buy_price: str(c?.buy_price), sell_price: str(c?.sell_price), amazon_fees: str(c?.amazon_fees),
     profit: str(c?.profit), roi: str(c?.roi), monthly_sales: str(c?.monthly_sales), bsr: str(c?.bsr),
+    quantity: str(c?.quantity),
     notes: c?.notes ?? '', column_id: c?.column_id ?? columnId, verdict: c?.verdict ?? null, received: !!c?.received_at,
   }
 }
@@ -123,6 +124,7 @@ export function ProductCardDialog({
       asin: f.asin.trim().toUpperCase() || null, amazon_url: f.amazon_url.trim() || null,
       supplier_url: f.supplier_url.trim() || null, ...numbers,
       monthly_sales: intOrNull(f.monthly_sales), bsr: intOrNull(f.bsr), notes: f.notes.trim() || null,
+      quantity: (() => { const q = intOrNull(f.quantity); return q == null ? null : Math.max(0, q) })(),
       column_id: f.column_id, verdict: f.verdict,
       received_at: f.received ? (card?.received_at ?? new Date().toISOString()) : null,
     }
@@ -306,11 +308,16 @@ export function ProductCardDialog({
             <Textarea rows={5} value={f.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Ce que vous voulez retenir…" />
           </Field>
 
-          <Field label="Colonne">
-            <NativeSelect value={f.column_id} onChange={(e) => set('column_id', e.target.value)}>
-              {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </NativeSelect>
-          </Field>
+          <div className="grid grid-cols-[110px_1fr] gap-3">
+            <Field label="Quantité">
+              <Input value={f.quantity} onChange={(e) => set('quantity', e.target.value)} inputMode="numeric" placeholder="Ex. : 12" />
+            </Field>
+            <Field label="Colonne">
+              <NativeSelect value={f.column_id} onChange={(e) => set('column_id', e.target.value)}>
+                {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </NativeSelect>
+            </Field>
+          </div>
 
           <div className="rounded-lg border">
             <button
